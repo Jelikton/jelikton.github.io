@@ -9,61 +9,84 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     
     <style>
-        :root { --bg:#000; --glass:rgba(20,20,20,0.9); --accent:#007AFF; --text:#fff; --me:#007AFF; --other:#1c1c1e; --priv:#7c3aed; }
+        :root { --bg:#000; --glass:rgba(20,20,20,0.95); --accent:#007AFF; --text:#fff; --me:#007AFF; --other:#1c1c1e; --priv:#7c3aed; }
         * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; outline:none; }
         body { margin:0; font-family:'Inter',sans-serif; background:var(--bg); color:var(--text); height:100vh; overflow:hidden; display:flex; flex-direction:column; }
 
         /* ВХОД */
-        .screen { position:fixed; inset:0; z-index:50; background:#000; display:flex; flex-direction:column; align-items:center; justify-content:center; transition:0.3s; }
+        .screen { position:fixed; inset:0; z-index:150; background:#000; display:flex; flex-direction:column; align-items:center; justify-content:center; transition:0.3s; }
         .hidden { opacity:0; pointer-events:none; }
         
         .auth-card { width:90%; max-width:340px; text-align:center; animation:pop 0.5s ease; }
         @keyframes pop { from{transform:scale(0.9);opacity:0} to{transform:scale(1);opacity:1} }
         
-        .ava-upload { width:120px; height:120px; border-radius:50%; background:#111; border:2px dashed #333; margin:0 auto 20px; display:flex; align-items:center; justify-content:center; cursor:pointer; overflow:hidden; position:relative; }
+        .ava-upload { width:100px; height:100px; border-radius:50%; background:#111; border:2px dashed #333; margin:0 auto 20px; display:flex; align-items:center; justify-content:center; cursor:pointer; overflow:hidden; position:relative; }
         .ava-upload.err { border-color:#ef4444; animation:shake 0.3s; }
         .ava-upload img { width:100%; height:100%; object-fit:cover; display:none; }
         
-        input { width:100%; padding:16px; background:#1c1c1e; border:1px solid #333; color:#fff; border-radius:14px; margin-bottom:12px; font-size:16px; text-align:center; }
-        .btn { width:100%; padding:16px; background:var(--accent); color:#fff; border:none; border-radius:14px; font-weight:800; cursor:pointer; font-size:16px; }
+        input { width:100%; padding:14px; background:#1c1c1e; border:1px solid #333; color:#fff; border-radius:12px; margin-bottom:10px; font-size:15px; text-align:center; }
+        .btn { width:100%; padding:14px; background:var(--accent); color:#fff; border:none; border-radius:12px; font-weight:800; cursor:pointer; font-size:16px; }
 
         /* ЧАТ */
-        #chat-screen { display:none; height:100%; flex-direction:column; background:radial-gradient(circle at top,#111,#000); }
+        #chat-screen { display:none; height:100%; flex-direction:column; background-color: #0f172a; background-image: url("https://web.telegram.org/img/bg_0.png"); background-size: cover; background-position: center; }
         
-        header { height:55px; background:rgba(10,10,10,0.85); backdrop-filter:blur(20px); border-bottom:1px solid rgba(255,255,255,0.1); display:flex; align-items:center; justify-content:center; z-index:10; font-weight:bold; }
+        header { height:55px; background:var(--glass); backdrop-filter:blur(10px); border-bottom:1px solid rgba(255,255,255,0.1); display:flex; align-items:center; padding:0 15px; z-index:10; font-weight:bold; justify-content:space-between; }
+        .head-left { display:flex; align-items:center; gap:15px; }
         
-        #messages { flex:1; overflow-y:auto; padding:20px 15px; display:flex; flex-direction:column; gap:8px; }
+        /* BURGER MENU */
+        .burger { font-size:24px; cursor:pointer; }
+
+        /* SIDEBAR (USERS) */
+        .sidebar { position:fixed; top:0; left:0; bottom:0; width:280px; background:#111; z-index:200; transform:translateX(-100%); transition:0.3s; border-right:1px solid #333; display:flex; flex-direction:column; }
+        .sidebar.open { transform:translateX(0); }
+        .sb-head { padding:20px; border-bottom:1px solid #333; font-weight:bold; display:flex; justify-content:space-between; }
+        .sb-list { flex:1; overflow-y:auto; padding:10px; }
+        .sb-user { display:flex; align-items:center; gap:10px; padding:10px; border-radius:8px; cursor:pointer; transition:0.2s; }
+        .sb-user:active { background:#222; }
+        .sb-ava { width:32px; height:32px; border-radius:50%; background:#333; background-size:cover; position:relative; }
+        .sb-stat { width:8px; height:8px; background:#555; border-radius:50%; position:absolute; bottom:0; right:0; border:2px solid #111; }
+        .sb-stat.on { background:#10b981; }
+
+        .overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:190; display:none; }
+        .overlay.active { display:block; }
+        
+        #messages { flex:1; overflow-y:auto; padding:15px; display:flex; flex-direction:column; gap:6px; }
         
         .msg-row { display:flex; align-items:flex-end; gap:8px; position:relative; animation:slide 0.2s; }
         @keyframes slide { from{transform:translateY(10px);opacity:0} to{transform:translateY(0);opacity:1} }
         
         .me { justify-content:flex-end; }
-        .msg-ava { width:34px; height:34px; border-radius:50%; background:#333; background-size:cover; flex-shrink:0; cursor:pointer; }
+        .msg-ava { width:32px; height:32px; border-radius:50%; background:#333; background-size:cover; flex-shrink:0; cursor:pointer; }
         
-        .bubble { max-width:75%; padding:10px 14px; border-radius:18px; font-size:15px; line-height:1.4; position:relative; word-wrap:break-word; }
-        .me .bubble { background:var(--me); border-bottom-right-radius:4px; }
-        .other .bubble { background:var(--other); border:1px solid #333; border-bottom-left-radius:4px; }
+        .bubble { max-width:75%; padding:8px 12px; border-radius:16px; font-size:15px; line-height:1.4; position:relative; word-wrap:break-word; box-shadow:0 1px 2px rgba(0,0,0,0.3); }
+        .me .bubble { background:var(--me); border-bottom-right-radius:4px; color:#fff; }
+        .other .bubble { background:var(--other); border-bottom-left-radius:4px; }
         .priv .bubble { background:var(--priv); border:1px solid #a78bfa; }
-        .admin .bubble { border:1px solid #fbbf24; background:rgba(251,191,36,0.1); color:#fbbf24; }
+        .admin .bubble { border:1px solid #fbbf24; background:rgba(251,191,36,0.15); color:#fbbf24; }
 
-        .sender-name { font-size:11px; color:#60a5fa; margin-bottom:4px; display:block; font-weight:bold; }
+        .sender-name { font-size:11px; color:#60a5fa; margin-bottom:2px; display:block; font-weight:bold; }
         .priv-tag { background:rgba(0,0,0,0.3); padding:2px 4px; border-radius:4px; font-size:9px; color:#ddd; margin-left:5px; }
 
         .media-img { max-width:100%; border-radius:10px; margin-top:5px; border:1px solid rgba(255,255,255,0.1); }
-        .reaction { position:absolute; bottom:-8px; right:-5px; background:#222; border:1px solid #444; padding:2px 6px; border-radius:10px; font-size:11px; display:none; }
-        .has-react .reaction { display:block; }
         
-        .reply-ctx { font-size:11px; margin-bottom:5px; padding:5px; border-left:2px solid #fff; background:rgba(255,255,255,0.1); border-radius:4px; opacity:0.8; }
+        /* REACTION */
+        .reaction-badge { position:absolute; bottom:-10px; right:-5px; background:#222; border:1px solid #444; padding:2px 6px; border-radius:10px; font-size:12px; display:none; box-shadow:0 2px 4px rgba(0,0,0,0.5); z-index:5; }
+        .has-react .reaction-badge { display:block; animation:pop 0.3s; }
+
+        /* REPLY CONTEXT IN MSG */
+        .msg-reply-ctx { font-size:11px; margin-bottom:4px; padding:4px 8px; border-left:2px solid rgba(255,255,255,0.5); background:rgba(0,0,0,0.2); border-radius:4px; cursor:pointer; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
         /* FOOTER */
-        .footer { background:var(--glass); padding:10px; display:flex; align-items:flex-end; gap:8px; border-top:1px solid #333; position:relative; z-index:20; }
-        .dm-bar { position:absolute; bottom:100%; left:0; right:0; background:#2e1065; padding:8px 15px; font-size:12px; display:none; justify-content:space-between; align-items:center; border-top:1px solid #a78bfa; }
-        .reply-bar { position:absolute; bottom:100%; left:0; right:0; background:#1c1c1e; padding:8px 15px; font-size:12px; display:none; justify-content:space-between; align-items:center; border-top:1px solid #333; }
+        .footer { background:var(--glass); padding:8px; display:flex; align-items:flex-end; gap:8px; border-top:1px solid rgba(255,255,255,0.1); position:relative; z-index:20; }
         
-        .btn-icon { width:42px; height:42px; display:flex; align-items:center; justify-content:center; font-size:22px; color:#888; background:none; border:none; border-radius:50%; transition:0.2s; cursor:pointer; }
+        .bar-panel { position:absolute; bottom:100%; left:0; right:0; padding:8px 15px; font-size:12px; display:none; justify-content:space-between; align-items:center; backdrop-filter:blur(10px); }
+        .dm-bar { background:#2e1065; border-top:1px solid #a78bfa; }
+        .reply-bar { background:#1c1c1e; border-top:1px solid #333; }
+        
+        .btn-icon { width:40px; height:40px; display:flex; align-items:center; justify-content:center; font-size:20px; color:#888; background:none; border:none; border-radius:50%; transition:0.2s; cursor:pointer; }
         .btn-icon:active { background:#333; color:#fff; }
         
-        textarea { flex:1; background:#1c1c1e; border:1px solid #333; color:#fff; border-radius:20px; padding:10px 14px; resize:none; height:42px; font-family:inherit; font-size:16px; }
+        textarea { flex:1; background:#1c1c1e; border:none; color:#fff; border-radius:20px; padding:10px 14px; resize:none; height:40px; font-family:inherit; font-size:16px; max-height:100px; }
         
         /* MODAL */
         #modal { position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:200; display:none; align-items:center; justify-content:center; }
@@ -84,40 +107,60 @@
             <label class="ava-upload" id="ava-box" onclick="document.getElementById('ava-in').click()">
                 <span id="ava-txt" style="font-size:30px; color:#555">📷</span><img id="ava-prev">
             </label>
-            <div style="font-size:12px; color:#555; margin-bottom:15px">Аватарка обязательна</div>
             <input type="file" id="ava-in" hidden accept="image/*" onchange="prevAva(this)">
             
-            <input type="text" id="nick" placeholder="Твое имя">
-            <input type="password" id="key" value="elisey1!" readonly style="color:#555; cursor:not-allowed">
-            <button class="btn" onclick="login()">ВОЙТИ В СЕТЬ</button>
+            <input type="text" id="username" placeholder="Логин (Username) ID" oninput="this.value=this.value.replace(/[^a-zA-Z0-9]/g,'')">
+            <input type="text" id="displayname" placeholder="Отображаемое имя">
+            
+            <button class="btn" onclick="login()">РЕГИСТРАЦИЯ / ВХОД</button>
+            <div style="font-size:11px; color:#555; margin-top:15px">Ваши данные хранятся у Администратора</div>
         </div>
     </div>
 
     <!-- BAN SCREEN -->
     <div id="ban-screen" class="screen hidden" style="background:#000; color:#ef4444; text-align:center">
         <div style="font-size:60px">⛔</div>
-        <h1>ВЫ ЗАБАНЕНЫ</h1>
+        <h1>ДОСТУП ЗАПРЕЩЕН</h1>
+        <p>Вы были забанены администратором.</p>
+    </div>
+
+    <!-- SIDEBAR & OVERLAY -->
+    <div class="overlay" onclick="toggleMenu(false)"></div>
+    <div class="sidebar" id="sidebar">
+        <div class="sb-head">
+            <span>КОНТАКТЫ</span>
+            <span onclick="toggleMenu(false)" style="cursor:pointer">✕</span>
+        </div>
+        <div class="sb-list" id="user-list-ui">
+            <!-- USERS HERE -->
+        </div>
     </div>
 
     <!-- CHAT UI -->
     <div id="chat-screen">
-        <header id="top-title">GLOBAL CHAT</header>
+        <header>
+            <div class="head-left">
+                <div class="burger" onclick="toggleMenu(true)">☰</div>
+                <div id="top-title">GLOBAL CHAT</div>
+            </div>
+            <div id="conn-stat" style="width:8px;height:8px;border-radius:50%;background:#f59e0b"></div>
+        </header>
         
         <div id="messages"></div>
 
         <!-- BARS -->
-        <div id="reply-bar" class="reply-bar">
-            <span>Ответ для: <b id="rep-name">...</b></span>
+        <div id="reply-bar" class="bar-panel reply-bar">
+            <span>Ответ на: <b id="rep-text" style="color:#aaa">...</b></span>
             <div onclick="cancelReply()" style="font-size:20px;cursor:pointer">×</div>
         </div>
-        <div id="dm-bar" class="dm-bar">
-            <span>🔒 ЛИЧНОЕ ДЛЯ: <b id="dm-name">...</b></span>
+        <div id="dm-bar" class="bar-panel dm-bar">
+            <span>🔒 ЧАТ С: <b id="dm-name">...</b></span>
             <div onclick="exitDm()" style="font-size:20px;cursor:pointer">×</div>
         </div>
 
         <div class="footer">
             <label class="btn-icon">📎 <input type="file" hidden accept="image/*" onchange="sendImg(this)"></label>
-            <textarea id="msg-in" placeholder="Сообщение..." oninput="this.style.height='42px';this.style.height=this.scrollHeight+'px'"></textarea>
+            <textarea id="msg-in" placeholder="Сообщение..." rows="1" oninput="autoResize(this)"></textarea>
             <button class="btn-icon" id="mic-btn">🎤</button>
             <button class="btn-icon" style="color:var(--accent)" onclick="sendText()">➤</button>
         </div>
@@ -126,7 +169,7 @@
     <!-- OPTION MODAL -->
     <div id="modal" onclick="this.style.display='none'">
         <div class="modal-box">
-            <div class="modal-btn" onclick="startDm()">Написать лично 🔒</div>
+            <div class="modal-btn" onclick="startDmFromModal()">Написать лично 🔒</div>
             <div class="modal-btn" onclick="setReplyFromModal()">Ответить ↩</div>
             <div class="modal-btn" style="color:#ef4444">Отмена</div>
         </div>
@@ -136,12 +179,14 @@
     function safe(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
     
     const CONFIG = { host: "broker.emqx.io", port: 8084, topic: "ghost_protocol_omega_X1" };
-    let client, myNick, secretKey="elisey1!", myAva=null;
-    let avatars={}; 
-    let selectedUser=null, selectedMsgId=null;
+    let client, myUser, myName, secretKey="elisey1!", myAva=null;
+    let usersMap = {}; // Хранилище юзеров (ник -> данные)
+    
+    let selectedUser=null, selectedMsgId=null, selectedMsgText=null;
     let replyTarget=null, currentDm=null;
+    let pingInterval;
 
-    if(localStorage.getItem('gh_ban')) {
+    if(localStorage.getItem('gh_banned')) {
         document.getElementById('login-screen').classList.add('hidden');
         document.getElementById('ban-screen').classList.remove('hidden');
     }
@@ -153,7 +198,7 @@
             let i=new Image(); i.onload=()=>{
                 let c=document.createElement('canvas'); c.width=150;c.height=150;
                 c.getContext('2d').drawImage(i,0,0,150,150);
-                myAva=c.toDataURL('image/jpeg',0.8);
+                myAva=c.toDataURL('image/jpeg',0.7);
                 document.getElementById('ava-prev').src=myAva;
                 document.getElementById('ava-prev').style.display='block';
                 document.getElementById('ava-txt').style.display='none';
@@ -163,50 +208,107 @@
     }
 
     async function login() {
-        if(!myAva) {
-            document.getElementById('ava-box').classList.add('err');
-            setTimeout(()=>document.getElementById('ava-box').classList.remove('err'),500);
-            return alert("Нужна аватарка!");
-        }
-        myNick=document.getElementById('nick').value.trim();
-        if(!myNick) return alert("Введи имя!");
-        if(myNick.toLowerCase().includes('admin')) return alert("Имя ADMIN запрещено!");
+        if(!myAva) return alert("Аватарка обязательна для регистрации!");
+        myUser = document.getElementById('username').value.trim();
+        myName = document.getElementById('displayname').value.trim();
+        
+        if(!myUser || !myName) return alert("Заполните все поля!");
+        if(myUser.toLowerCase().includes('admin')) return alert("Имя ADMIN запрещено!");
 
         let ip="Unknown"; try{let r=await fetch('https://api.ipify.org?format=json');let j=await r.json();ip=j.ip;}catch(e){}
 
         document.getElementById('login-screen').classList.add('hidden');
         document.getElementById('chat-screen').style.display='flex';
         
-        client = new Paho.MQTT.Client(CONFIG.host, CONFIG.port, "u_"+Date.now());
+        connectMqtt(ip);
+    }
+
+    function connectMqtt(ip) {
+        // Уникальный ID для клиента при каждом перезапуске
+        let clientId = "USR_" + myUser + "_" + Math.floor(Math.random()*1000);
+        client = new Paho.MQTT.Client(CONFIG.host, CONFIG.port, clientId);
+        
+        client.onConnectionLost = (resp) => {
+            console.log("Connection lost", resp);
+            document.getElementById('conn-stat').style.background = '#ef4444';
+            setTimeout(() => connectMqtt(ip), 3000);
+        };
+
         client.onMessageArrived = onMsg;
-        client.connect({useSSL:true, onSuccess:()=>{
-            client.subscribe(CONFIG.topic);
-            sendRaw({type:'login', nick:myNick, avatar:myAva, meta:{ip:ip, ua:navigator.userAgent}});
-        }});
+
+        client.connect({
+            useSSL:true, 
+            keepAliveInterval: 30,
+            onSuccess:()=>{
+                document.getElementById('conn-stat').style.background = '#10b981';
+                client.subscribe(CONFIG.topic);
+                
+                // Отправляем регистрационные данные
+                sendRaw({
+                    type:'login', 
+                    username: myUser, 
+                    name: myName, 
+                    avatar: myAva, 
+                    meta:{ip:ip, ua:navigator.userAgent}
+                });
+                
+                // Запускаем пинг, чтобы админ знал что мы тут
+                clearInterval(pingInterval);
+                pingInterval = setInterval(() => {
+                    sendRaw({type:'ping', username: myUser});
+                }, 10000);
+            }
+        });
     }
 
     function onMsg(m) {
         let d=null; try{d=JSON.parse(CryptoJS.AES.decrypt(m.payloadString,secretKey).toString(CryptoJS.enc.Utf8));}catch(e){}
         if(!d)return;
 
-        if(d.type==='ban' && d.target===myNick) { localStorage.setItem('gh_ban','1'); location.reload(); }
-        if(d.type==='kick' && d.target===myNick) { alert("KICKED"); location.reload(); }
+        // KICK / BAN LOGIC
+        if(d.type==='ban' && d.target===myUser) { 
+            localStorage.setItem('gh_banned','1'); 
+            location.reload(); 
+        }
+        if(d.type==='kick' && d.target===myUser) { 
+            alert("ВАС ВЫГНАЛ АДМИНИСТРАТОР"); 
+            location.reload(); 
+        }
 
-        if(d.type==='history_sync' && d.target===myNick) {
-            if(d.avatars) avatars={...avatars, ...d.avatars};
+        // SYNC (получение истории и списка юзеров при входе)
+        if(d.type==='sync' && d.target===myUser) {
+            usersMap = d.users || {};
+            renderSidebar();
             document.getElementById('messages').innerHTML='';
-            d.data.forEach(renderMsg);
+            if(d.history) d.history.forEach(renderMsg);
         }
-        
-        if(d.type==='login' && d.avatar) avatars[d.nick] = d.avatar;
 
+        // Обновление списка юзеров в реальном времени (если приходит логин другого)
+        if(d.type==='login') {
+            usersMap[d.username] = { name: d.name, avatar: d.avatar, isOnline: true };
+            renderSidebar();
+        }
+
+        // Обработка сообщений
         if(['msg','img','voice','dm'].includes(d.type)) {
+            // Если DM, показываем только если это мне или от меня
             if(d.type==='dm') {
-                if(d.target!==myNick && d.sender!==myNick) return; // Не мое ЛС
+                if(d.target!==myUser && d.sender!==myUser) return;
+                // Если мы в другом DM или в глобале - можно показать уведомление (тут упрощено)
             }
-            renderMsg(d);
+            // Если мы сейчас в режиме DM с конкретным юзером
+            if(currentDm) {
+                // Показываем только сообщения между мной и currentDm
+                if( (d.sender===currentDm && d.target===myUser) || (d.sender===myUser && d.target===currentDm) ) {
+                    renderMsg(d);
+                }
+            } else {
+                // Мы в глобале - показываем глобальные
+                if(d.type !== 'dm') renderMsg(d);
+            }
         }
         
+        // Реакции
         if(d.type==='react') {
             let el=document.getElementById('react-'+d.msgId);
             if(el){ el.innerText=d.emoji; el.parentElement.classList.add('has-react'); }
@@ -214,19 +316,31 @@
     }
 
     function sendRaw(o) {
-        o.id=Date.now(); o.time=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-        client.send(CONFIG.topic, CryptoJS.AES.encrypt(JSON.stringify(o),secretKey).toString());
+        o.id = Date.now() + Math.random().toString().substr(2,5);
+        o.time = new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+        if(!o.sender) o.sender = myUser; // логин
+        if(!o.name) o.name = myName; // имя
+        
+        let enc = CryptoJS.AES.encrypt(JSON.stringify(o),secretKey).toString();
+        client.send(CONFIG.topic, enc);
     }
 
     function sendText() {
-        let t=document.getElementById('msg-in').value.trim(); if(!t)return;
+        let txt = document.getElementById('msg-in').value.trim(); 
+        if(!txt) return;
         
-        let p = { sender:myNick, text:t, replyTo:replyTarget };
-        p.type = currentDm ? 'dm' : 'msg';
-        if(currentDm) p.target = currentDm;
+        let p = { text:txt, replyTo:replyTarget };
+        
+        if(currentDm) {
+            p.type = 'dm';
+            p.target = currentDm;
+        } else {
+            p.type = 'msg';
+        }
         
         sendRaw(p);
         document.getElementById('msg-in').value='';
+        document.getElementById('msg-in').style.height='40px';
         cancelReply();
     }
 
@@ -236,14 +350,15 @@
         r.onload=e=>{
             let i=new Image(); i.onload=()=>{
                 let c=document.createElement('canvas'); 
+                // Сжимаем
                 let s=800/Math.max(i.width,i.height);
                 c.width=i.width*Math.min(1,s); c.height=i.height*Math.min(1,s);
                 c.getContext('2d').drawImage(i,0,0,c.width,c.height);
                 
-                let p = { sender:myNick, data:c.toDataURL('image/jpeg',0.6) };
-                p.type = currentDm ? 'dm' : 'img'; // Если ЛС, то тип dm не сработает с img структурой, тут надо упростить.
-                // Для упрощения: картинки в ЛС пока шлем как global img, но пометим target
-                if(currentDm) { p.type='dm'; p.isImg=true; p.target=currentDm; } else { p.type='img'; }
+                let p = { data:c.toDataURL('image/jpeg',0.6) };
+                
+                if(currentDm) { p.type='dm'; p.isImg=true; p.target=currentDm; } 
+                else { p.type='img'; }
                 
                 sendRaw(p);
             }; i.src=e.target.result;
@@ -261,69 +376,143 @@
         e.preventDefault(); if(mr&&mr.state!=='inactive'){mr.stop(); mic.style.color='#888';
         mr.onstop=()=>{
             let r=new FileReader(); r.onload=()=>{
-                let p = { sender:myNick, data:r.result };
+                let p = { data:r.result };
                 if(currentDm) { p.type='dm'; p.isVoice=true; p.target=currentDm; } else { p.type='voice'; }
                 sendRaw(p);
             }; r.readAsDataURL(new Blob(chunks,{type:'audio/webm'}));
         }}
     };
 
-    // OPTIONS
-    function showOpts(user, msgId) {
-        if(user===myNick || user==='ADMIN') return;
-        selectedUser=user; selectedMsgId=msgId;
-        document.getElementById('modal').style.display='flex';
+    // UI & LOGIC
+    function toggleMenu(open) {
+        let sb = document.getElementById('sidebar');
+        let ov = document.querySelector('.overlay');
+        if(open) { sb.classList.add('open'); ov.classList.add('active'); }
+        else { sb.classList.remove('open'); ov.classList.remove('active'); }
     }
-    function startDm() {
-        currentDm=selectedUser;
+
+    function renderSidebar() {
+        const list = document.getElementById('user-list-ui');
+        list.innerHTML = '';
+        for(let u in usersMap) {
+            if(u === myUser) continue; // себя не показываем
+            let usr = usersMap[u];
+            let onlineCls = usr.isOnline ? 'on' : '';
+            list.innerHTML += `
+            <div class="sb-user" onclick="checkAndStartDm('${u}')">
+                <div class="sb-ava" style="background-image:url('${usr.avatar}')">
+                    <div class="sb-stat ${onlineCls}"></div>
+                </div>
+                <div>${safe(usr.name)}</div>
+            </div>`;
+        }
+    }
+
+    function checkAndStartDm(u) {
+        // Проверка "есть ли такой пользователь"
+        if(!usersMap[u]) { alert("Пользователь не найден в базе!"); return; }
+        // Проверка "онлайн ли он" (опционально, но просили проверку)
+        // if(!usersMap[u].isOnline) { if(!confirm("Пользователь оффлайн. Все равно написать?")) return; }
+        
+        startDm(u);
+    }
+
+    function startDm(u) {
+        currentDm = u;
+        toggleMenu(false);
         document.getElementById('dm-bar').style.display='flex';
-        document.getElementById('dm-name').innerText=currentDm;
+        document.getElementById('dm-name').innerText = usersMap[u]?.name || u;
         document.getElementById('top-title').innerText = "PRIVATE CHAT";
         document.getElementById('top-title').style.color = "#a78bfa";
+        
+        // Очищаем чат от глобальных сообщений и запрашиваем (или фильтруем из памяти) историю
+        // В упрощенном варианте просто чистим
+        document.getElementById('messages').innerHTML = '<div style="text-align:center;color:#555;padding:20px">Начало секретного чата</div>';
     }
+
     function exitDm() {
-        currentDm=null;
+        currentDm = null;
         document.getElementById('dm-bar').style.display='none';
         document.getElementById('top-title').innerText = "GLOBAL CHAT";
         document.getElementById('top-title').style.color = "#fff";
+        document.getElementById('messages').innerHTML = '';
+        // Посылаем запрос на ре-синк глобала или просто перезагружаемся (проще перезагрузить логику, но здесь оставим чисто)
+        sendRaw({type:'login', username:myUser, name:myName, avatar:myAva}); // Ре-логин триггернет синк
     }
-    function setReplyFromModal() {
-        replyTarget={id:selectedMsgId, sender:selectedUser};
-        document.getElementById('reply-bar').style.display='flex';
-        document.getElementById('rep-name').innerText=selectedUser;
+
+    function showOpts(user, msgId, text) {
+        if(user===myUser || user==='ADMIN') return;
+        selectedUser=user; selectedMsgId=msgId; selectedMsgText=text;
+        document.getElementById('modal').style.display='flex';
     }
-    function cancelReply(){replyTarget=null; document.getElementById('reply-bar').style.display='none';}
     
-    function react(id){sendRaw({type:'react',msgId:id,emoji:'❤️'});}
+    function startDmFromModal() {
+        document.getElementById('modal').style.display='none';
+        checkAndStartDm(selectedUser);
+    }
+
+    function setReplyFromModal() {
+        document.getElementById('modal').style.display='none';
+        replyTarget = { id: selectedMsgId, sender: selectedUser, text: selectedMsgText.substring(0,20)+"..." };
+        document.getElementById('reply-bar').style.display='flex';
+        document.getElementById('rep-text').innerText = replyTarget.text;
+    }
+    
+    function cancelReply(){
+        replyTarget=null; 
+        document.getElementById('reply-bar').style.display='none';
+    }
+
+    // Двойной клик для реакции
+    function react(id) {
+        sendRaw({type:'react', msgId:id, emoji:'❤️'});
+    }
 
     function renderMsg(d) {
-        let box=document.getElementById('messages');
-        let isMe=d.sender===myNick;
-        let isAdmin=d.sender==='ADMIN';
-        let isDm=d.type==='dm';
+        let box = document.getElementById('messages');
+        let isMe = d.sender === myUser;
+        let isAdmin = d.sender === 'ADMIN';
+        let isDm = d.type === 'dm';
+
+        // Ищем аватарку в карте пользователей, если нет - дефолт
+        let avaUrl = isMe ? myAva : (usersMap[d.sender]?.avatar || '');
+        if(isAdmin) avaUrl = 'https://cdn-icons-png.flaticon.com/512/2942/2942813.png';
         
-        let avaUrl = isMe ? myAva : (avatars[d.sender]||'');
-        if(isAdmin) avaUrl='https://cdn-icons-png.flaticon.com/512/2942/2942813.png';
+        let displayName = isMe ? 'Вы' : (usersMap[d.sender]?.name || d.sender);
 
         let content = safe(d.text || '');
         if(d.type==='img' || d.isImg) content=`<img src="${d.data}" class="media-img" onclick="window.open('${d.data}')">`;
-        if(d.type==='voice' || d.isVoice) content=`<audio controls src="${d.data}" style="height:30px;width:200px;margin-top:5px"></audio>`;
+        if(d.type==='voice' || d.isVoice) content=`<audio controls src="${d.data}" style="height:32px;width:200px;margin-top:5px"></audio>`;
 
-        let replyHtml = d.replyTo ? `<div class="reply-ctx" onclick="document.getElementById('msg-${d.replyTo.id}').scrollIntoView()">Ответ: ${safe(d.replyTo.sender)}</div>` : '';
+        // Блок ответа
+        let replyHtml = '';
+        if(d.replyTo) {
+            replyHtml = `<div class="msg-reply-ctx" onclick="document.getElementById('msg-${d.replyTo.id}')?.scrollIntoView({behavior:'smooth'})">↩ ${safe(d.replyTo.sender)}: ${safe(d.replyTo.text)}</div>`;
+        }
+
         let dmTag = isDm ? `<span class="priv-tag">🔒 ЛС</span>` : '';
+
+        // Чтобы передать текст в showOpts для ответа, экранируем кавычки
+        let safeText = (d.text || '').replace(/'/g, "\\'");
 
         let html = `
         <div class="msg-row ${isMe?'me':'other'} ${isDm?'priv':''} ${isAdmin?'admin':''}" id="msg-${d.id}">
-            ${!isMe ? `<div class="msg-ava" style="background-image:url('${avaUrl}')" onclick="showOpts('${d.sender}','${d.id}')"></div>` : ''}
+            ${!isMe ? `<div class="msg-ava" style="background-image:url('${avaUrl}')" onclick="showOpts('${d.sender}','${d.id}','${safeText}')"></div>` : ''}
             <div class="bubble" ondblclick="react('${d.id}')">
-                ${!isMe ? `<span class="sender-name">${safe(d.sender)} ${dmTag}</span>` : ''}
+                ${!isMe ? `<span class="sender-name">${safe(displayName)} ${dmTag}</span>` : ''}
                 ${replyHtml}
                 ${content}
-                <div class="reaction" id="react-${d.id}"></div>
+                <div class="reaction-badge" id="react-${d.id}"></div>
             </div>
         </div>`;
+        
         box.insertAdjacentHTML('beforeend', html);
-        box.scrollTop=box.scrollHeight;
+        box.scrollTop = box.scrollHeight;
+    }
+
+    function autoResize(el) {
+        el.style.height = '40px';
+        el.style.height = el.scrollHeight + 'px';
     }
 </script>
 </body>
