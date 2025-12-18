@@ -25,7 +25,8 @@
         .ava-upload img { width:100%; height:100%; object-fit:cover; display:none; }
         
         input { width:100%; padding:14px; background:#1c1c1e; border:1px solid #333; color:#fff; border-radius:12px; margin-bottom:10px; font-size:15px; text-align:center; }
-        .btn { width:100%; padding:14px; background:var(--accent); color:#fff; border:none; border-radius:12px; font-weight:800; cursor:pointer; font-size:16px; }
+        .btn { width:100%; padding:14px; background:var(--accent); color:#fff; border:none; border-radius:12px; font-weight:800; cursor:pointer; font-size:16px; transition:0.3s; }
+        .btn:disabled { opacity:0.5; cursor:wait; }
 
         /* ЧАТ */
         #chat-screen { display:none; height:100%; flex-direction:column; background-color: #0f172a; background-image: url("https://web.telegram.org/img/bg_0.png"); background-size: cover; background-position: center; }
@@ -112,7 +113,7 @@
             <input type="password" id="password" placeholder="Пароль">
             <input type="text" id="displayname" placeholder="Отображаемое имя">
             
-            <button class="btn" onclick="login()">ВОЙТИ / СОЗДАТЬ</button>
+            <button id="login-btn" class="btn" onclick="login()">ВОЙТИ / СОЗДАТЬ</button>
         </div>
     </div>
 
@@ -216,11 +217,12 @@
         if(myUser.toLowerCase().includes('admin')) return alert("Имя ADMIN запрещено!");
 
         localStorage.setItem('gh_me', myUser);
+        let btn = document.getElementById('login-btn');
+        btn.disabled = true;
+        btn.innerText = "ПОДКЛЮЧЕНИЕ...";
+
         let ip="Unknown"; try{let r=await fetch('https://api.ipify.org?format=json');let j=await r.json();ip=j.ip;}catch(e){}
 
-        // Показываем загрузку, скрываем логин (но если пароль не тот - вернем)
-        document.getElementById('login-screen').classList.add('hidden');
-        
         connectMqtt(ip, false);
     }
 
@@ -246,6 +248,10 @@
                 client.subscribe(CONFIG.topic);
                 
                 if(!isBannedMode) {
+                    // !!! ВАЖНОЕ ИСПРАВЛЕНИЕ: ОТКРЫВАЕМ ЧАТ СРАЗУ ПОСЛЕ ПОДКЛЮЧЕНИЯ !!!
+                    document.getElementById('login-screen').classList.add('hidden');
+                    document.getElementById('chat-screen').style.display='flex';
+
                     // ОТПРАВЛЯЕМ ЛОГИН С ПАРОЛЕМ
                     sendRaw({
                         type:'login', 
@@ -261,6 +267,12 @@
                         sendRaw({type:'ping', username: myUser});
                     }, 10000);
                 }
+            },
+            onFailure: (e) => {
+                alert("ОШИБКА ПОДКЛЮЧЕНИЯ: " + e.errorMessage);
+                let btn = document.getElementById('login-btn');
+                btn.disabled = false;
+                btn.innerText = "ВОЙТИ / СОЗДАТЬ";
             }
         });
     }
@@ -272,13 +284,12 @@
         // 0. ОШИБКА АВТОРИЗАЦИИ (НЕВЕРНЫЙ ПАРОЛЬ)
         if(d.type === 'auth_fail' && d.target === currentNick) {
             alert("ОШИБКА ВХОДА: " + d.reason);
-            location.reload(); // Перезагружаем страницу, чтобы вернуть на форму входа
+            location.reload(); 
             return;
         }
 
         // 1. УСПЕШНЫЙ ВХОД (ПОЛУЧЕНИЕ ИСТОРИИ)
         if(d.type === 'history_sync' && d.target === currentNick) {
-            document.getElementById('chat-screen').style.display='flex'; // Показываем чат только после успеха
             if(d.users) usersMap = d.users;
             renderSidebar();
             
