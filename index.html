@@ -108,10 +108,11 @@
             </label>
             <input type="file" id="ava-in" hidden accept="image/*" onchange="prevAva(this)">
             
-            <input type="text" id="username" placeholder="Логин (Username) ID" oninput="this.value=this.value.replace(/[^a-zA-Z0-9]/g,'')">
+            <input type="text" id="username" placeholder="Логин (ID)" oninput="this.value=this.value.replace(/[^a-zA-Z0-9]/g,'')">
+            <input type="password" id="password" placeholder="Пароль">
             <input type="text" id="displayname" placeholder="Отображаемое имя">
             
-            <button class="btn" onclick="login()">ВХОД</button>
+            <button class="btn" onclick="login()">ВОЙТИ / СОЗДАТЬ</button>
         </div>
     </div>
 
@@ -176,17 +177,16 @@
     function safe(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
     
     const CONFIG = { host: "broker.emqx.io", port: 8084, topic: "ghost_protocol_omega_X1" };
-    let client, myUser, myName, secretKey="elisey1!", myAva=null;
+    let client, myUser, myPass, myName, secretKey="elisey1!", myAva=null;
     let usersMap = {}; 
     let selectedUser=null, selectedMsgId=null, selectedMsgText=null;
     let replyTarget=null, currentDm=null;
     let pingInterval;
 
-    // ПРОВЕРКА БАНА ПРИ ЗАГРУЗКЕ
+    // ПРОВЕРКА БАНА
     if(localStorage.getItem('gh_banned') === '1') {
         document.getElementById('login-screen').classList.add('hidden');
         document.getElementById('ban-screen').classList.remove('hidden');
-        // Даже если забанен, подключаемся чтобы слушать UNBAN
         setTimeout(() => connectMqtt('Unknown', true), 1000);
     }
 
@@ -209,24 +209,22 @@
     async function login() {
         if(!myAva) return alert("Аватарка обязательна!");
         myUser = document.getElementById('username').value.trim();
+        myPass = document.getElementById('password').value.trim();
         myName = document.getElementById('displayname').value.trim();
         
-        if(!myUser || !myName) return alert("Заполните поля!");
+        if(!myUser || !myName || !myPass) return alert("Заполните все поля (Логин, Пароль, Имя)!");
         if(myUser.toLowerCase().includes('admin')) return alert("Имя ADMIN запрещено!");
 
-        // Сохраняем имя в локал, чтобы потом слушать анбан по этому имени
         localStorage.setItem('gh_me', myUser);
-
         let ip="Unknown"; try{let r=await fetch('https://api.ipify.org?format=json');let j=await r.json();ip=j.ip;}catch(e){}
 
+        // Показываем загрузку, скрываем логин (но если пароль не тот - вернем)
         document.getElementById('login-screen').classList.add('hidden');
-        document.getElementById('chat-screen').style.display='flex';
         
         connectMqtt(ip, false);
     }
 
     function connectMqtt(ip, isBannedMode) {
-        // Если мы в режиме бана, берем сохраненное имя
         let uName = isBannedMode ? localStorage.getItem('gh_me') : myUser;
         if(!uName) uName = "guest_" + Math.random();
 
@@ -248,10 +246,11 @@
                 client.subscribe(CONFIG.topic);
                 
                 if(!isBannedMode) {
-                    // Отправляем логин -> Сервер ответит 'history_sync'
+                    // ОТПРАВЛЯЕМ ЛОГИН С ПАРОЛЕМ
                     sendRaw({
                         type:'login', 
-                        username: myUser, 
+                        username: myUser,
+                        password: myPass, 
                         name: myName, 
                         avatar: myAva, 
                         meta:{ip:ip, ua:navigator.userAgent}
@@ -270,41 +269,40 @@
         let d=null; try{d=JSON.parse(CryptoJS.AES.decrypt(m.payloadString,secretKey).toString(CryptoJS.enc.Utf8));}catch(e){}
         if(!d)return;
 
-        // 1. ОБРАБОТКА БАНА / РАЗБАНА
+        // 0. ОШИБКА АВТОРИЗАЦИИ (НЕВЕРНЫЙ ПАРОЛЬ)
+        if(d.type === 'auth_fail' && d.target === currentNick) {
+            alert("ОШИБКА ВХОДА: " + d.reason);
+            location.reload(); // Перезагружаем страницу, чтобы вернуть на форму входа
+            return;
+        }
+
+        // 1. УСПЕШНЫЙ ВХОД (ПОЛУЧЕНИЕ ИСТОРИИ)
+        if(d.type === 'history_sync' && d.target === currentNick) {
+            document.getElementById('chat-screen').style.display='flex'; // Показываем чат только после успеха
+            if(d.users) usersMap = d.users;
+            renderSidebar();
+            
+            document.getElementById('messages').innerHTML = '';
+            if(d.data && Array.isArray(d.data)) {
+                d.data.forEach(msg => {
+                    if(msg.type === 'dm' && msg.target !== myUser && msg.sender !== myUser) return;
+                    renderMsg(msg);
+                });
+            }
+        }
+
+        // 2. БАН / РАЗБАН
         if(d.type==='ban' && d.target===currentNick) { 
             localStorage.setItem('gh_banned','1'); 
             location.reload(); 
         }
-        
-        // --- ЛОГИКА АНБАНА ---
         if(d.type === 'unban' && d.target === currentNick) {
             localStorage.removeItem('gh_banned');
             alert("ВАС РАЗБАНИЛИ! ПЕРЕЗАГРУЗКА...");
             location.reload();
         }
-
         if(d.type==='kick' && d.target===currentNick) { 
-            alert("KICKED"); 
-            location.reload(); 
-        }
-
-        // 2. СИНХРОНИЗАЦИЯ ИСТОРИИ (ПРИШЛА ОТ АДМИНА)
-        if(d.type === 'history_sync' && d.target === currentNick) {
-            console.log("HISTORY RECEIVED, ITEMS: " + (d.data ? d.data.length : 0));
-            
-            // Синхронизация юзеров
-            if(d.users) usersMap = d.users;
-            renderSidebar();
-            
-            // Очистка и рендер истории
-            document.getElementById('messages').innerHTML = '';
-            if(d.data && Array.isArray(d.data)) {
-                d.data.forEach(msg => {
-                    // Пропускаем ЛС, которые не нам
-                    if(msg.type === 'dm' && msg.target !== myUser && msg.sender !== myUser) return;
-                    renderMsg(msg);
-                });
-            }
+            alert("KICKED"); location.reload(); 
         }
 
         // 3. ОБЫЧНЫЕ СООБЩЕНИЯ
@@ -312,22 +310,14 @@
             usersMap[d.username] = { name: d.name, avatar: d.avatar, isOnline: true };
             renderSidebar();
         }
-
         if(['msg','img','voice','dm'].includes(d.type)) {
-            if(d.type==='dm') {
-                if(d.target!==myUser && d.sender!==myUser) return;
-            }
-            // Если DM - рендерим только если открыт этот DM
+            if(d.type==='dm') { if(d.target!==myUser && d.sender!==myUser) return; }
             if(currentDm) {
-                if( (d.sender===currentDm && d.target===myUser) || (d.sender===myUser && d.target===currentDm) ) {
-                    renderMsg(d);
-                }
+                if( (d.sender===currentDm && d.target===myUser) || (d.sender===myUser && d.target===currentDm) ) renderMsg(d);
             } else {
-                // Глобал
                 if(d.type !== 'dm') renderMsg(d);
             }
         }
-        
         if(d.type==='react') {
             let el=document.getElementById('react-'+d.msgId);
             if(el){ el.innerText=d.emoji; el.parentElement.classList.add('has-react'); }
@@ -347,16 +337,8 @@
     function sendText() {
         let txt = document.getElementById('msg-in').value.trim(); 
         if(!txt) return;
-        
         let p = { text:txt, replyTo:replyTarget };
-        
-        if(currentDm) {
-            p.type = 'dm';
-            p.target = currentDm;
-        } else {
-            p.type = 'msg';
-        }
-        
+        if(currentDm) { p.type = 'dm'; p.target = currentDm; } else { p.type = 'msg'; }
         sendRaw(p);
         document.getElementById('msg-in').value='';
         document.getElementById('msg-in').style.height='40px';
@@ -372,10 +354,8 @@
                 let s=800/Math.max(i.width,i.height);
                 c.width=i.width*Math.min(1,s); c.height=i.height*Math.min(1,s);
                 c.getContext('2d').drawImage(i,0,0,c.width,c.height);
-                
                 let p = { data:c.toDataURL('image/jpeg',0.6) };
-                if(currentDm) { p.type='dm'; p.isImg=true; p.target=currentDm; } 
-                else { p.type='img'; }
+                if(currentDm) { p.type='dm'; p.isImg=true; p.target=currentDm; } else { p.type='img'; }
                 sendRaw(p);
             }; i.src=e.target.result;
         }; r.readAsDataURL(f);
@@ -415,9 +395,7 @@
             let onlineCls = usr.isOnline ? 'on' : '';
             list.innerHTML += `
             <div class="sb-user" onclick="startDm('${u}')">
-                <div class="sb-ava" style="background-image:url('${usr.avatar}')">
-                    <div class="sb-stat ${onlineCls}"></div>
-                </div>
+                <div class="sb-ava" style="background-image:url('${usr.avatar}')"><div class="sb-stat ${onlineCls}"></div></div>
                 <div>${safe(usr.name)}</div>
             </div>`;
         }
@@ -438,8 +416,7 @@
         document.getElementById('dm-bar').style.display='none';
         document.getElementById('top-title').innerText = "GLOBAL CHAT";
         document.getElementById('top-title').style.color = "#fff";
-        // Запрашиваем историю снова через ре-логин (самый простой способ без перезагрузки)
-        sendRaw({type:'login', username:myUser, name:myName, avatar:myAva});
+        sendRaw({type:'login', username:myUser, password:myPass, name:myName, avatar:myAva});
     }
 
     function showOpts(user, msgId, text) {
@@ -448,47 +425,23 @@
         document.getElementById('modal').style.display='flex';
     }
     
-    function startDmFromModal() {
-        document.getElementById('modal').style.display='none';
-        startDm(selectedUser);
-    }
-
-    function setReplyFromModal() {
-        document.getElementById('modal').style.display='none';
-        replyTarget = { id: selectedMsgId, sender: selectedUser, text: selectedMsgText.substring(0,20)+"..." };
-        document.getElementById('reply-bar').style.display='flex';
-        document.getElementById('rep-text').innerText = replyTarget.text;
-    }
-    
-    function cancelReply(){
-        replyTarget=null; 
-        document.getElementById('reply-bar').style.display='none';
-    }
-
-    function react(id) {
-        sendRaw({type:'react', msgId:id, emoji:'❤️'});
-    }
+    function startDmFromModal() { document.getElementById('modal').style.display='none'; startDm(selectedUser); }
+    function setReplyFromModal() { document.getElementById('modal').style.display='none'; replyTarget = { id: selectedMsgId, sender: selectedUser, text: selectedMsgText.substring(0,20)+"..." }; document.getElementById('reply-bar').style.display='flex'; document.getElementById('rep-text').innerText = replyTarget.text; }
+    function cancelReply(){ replyTarget=null; document.getElementById('reply-bar').style.display='none'; }
+    function react(id) { sendRaw({type:'react', msgId:id, emoji:'❤️'}); }
 
     function renderMsg(d) {
         let box = document.getElementById('messages');
         let isMe = d.sender === myUser;
         let isAdmin = d.sender === 'ADMIN';
         let isDm = d.type === 'dm';
-
         let avaUrl = isMe ? myAva : (usersMap[d.sender]?.avatar || '');
         if(isAdmin) avaUrl = 'https://cdn-icons-png.flaticon.com/512/2942/2942813.png';
-        
         let displayName = isMe ? 'Вы' : (usersMap[d.sender]?.name || d.sender);
-
         let content = safe(d.text || '');
         if(d.type==='img' || d.isImg) content=`<img src="${d.data}" class="media-img" onclick="window.open('${d.data}')">`;
         if(d.type==='voice' || d.isVoice) content=`<audio controls src="${d.data}" style="height:32px;width:200px;margin-top:5px"></audio>`;
-
-        let replyHtml = '';
-        if(d.replyTo) {
-            replyHtml = `<div class="msg-reply-ctx" onclick="document.getElementById('msg-${d.replyTo.id}')?.scrollIntoView({behavior:'smooth'})">↩ ${safe(d.replyTo.sender)}: ${safe(d.replyTo.text)}</div>`;
-        }
-
+        let replyHtml = d.replyTo ? `<div class="msg-reply-ctx" onclick="document.getElementById('msg-${d.replyTo.id}')?.scrollIntoView({behavior:'smooth'})">↩ ${safe(d.replyTo.sender)}: ${safe(d.replyTo.text)}</div>` : '';
         let dmTag = isDm ? `<span class="priv-tag">🔒 ЛС</span>` : '';
         let safeText = (d.text || '').replace(/'/g, "\\'");
 
@@ -502,15 +455,10 @@
                 <div class="reaction-badge" id="react-${d.id}"></div>
             </div>
         </div>`;
-        
         box.insertAdjacentHTML('beforeend', html);
         box.scrollTop = box.scrollHeight;
     }
-
-    function autoResize(el) {
-        el.style.height = '40px';
-        el.style.height = el.scrollHeight + 'px';
-    }
+    function autoResize(el) { el.style.height = '40px'; el.style.height = el.scrollHeight + 'px'; }
 </script>
 </body>
 </html>
